@@ -1,0 +1,15 @@
+# Node.js
+node_modules/
+
+# Truffle build directory
+/build/
+
+# Hardhat artifacts
+/artifacts/
+
+# IDEs and editors
+.vscode/
+.idea/
+
+# NPM logs
+npm-debug.log
