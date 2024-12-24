@@ -1,0 +1,16 @@
+{
+  "name": "recyc-token",
+  "version": "1.0.0",
+  "description": "A deflationary ERC20 token with fee collection",
+  "main": "index.js",
+  "scripts": {
+    "test": "truffle test"
+  },
+  "dependencies": {
+    "openzeppelin-solidity": "^4.0.0",
+    "truffle": "^5.0.0"
+  },
+  "devDependencies": {},
+  "author": "Your Name",
+  "license": "MIT"
+}
