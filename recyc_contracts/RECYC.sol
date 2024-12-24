@@ -6,41 +6,85 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract RECYC is ERC20, Ownable {
     uint256 public constant MAX_SUPPLY = 1000000000000 * (10 ** 18); // 1 trillion tokens
-    uint256 public burnRate = 2; // 2% of each transaction will be burned
+    uint256 public burnRate = 2; // 2% of each transaction is burned
+    uint256 public constant INITIAL_DISTRIBUTION = MAX_SUPPLY * 5 / 100; // 5% for initial click distribution (50 billion tokens)
+    uint256 public constant NEXT_PHASE_DISTRIBUTION = MAX_SUPPLY * 5 / 100; // 5% for subsequent clicks (50 billion tokens)
+
+    uint256 public constant CLICK_LIMIT_TIME = 3 hours; // 3 hours for each click
+    uint256 public constant MAX_CONCURRENT_USERS = 1000; // Max concurrent users who can click at once
+
+    mapping(address => uint256) public lastClickTime; // Track the last click time for each user
+    uint256 public totalDistributed = 0; // Track total distributed tokens
     address public feeCollector; // Address for collecting fees
+    address public creatorAddress; // Address of the creator for future distribution
 
-    uint256 public distributionRate = 5; // 5% to be distributed initially
-    uint256 public totalDistributed = 0; // Total amount of tokens distributed
-
-    constructor(address _feeCollector) ERC20("RECYC Coin", "RECYC") {
+    constructor(address _feeCollector, address _creatorAddress) ERC20("RECYC Coin", "RECYC") {
         require(_feeCollector != address(0), "Fee collector address cannot be zero");
+        require(_creatorAddress != address(0), "Creator address cannot be zero");
+
         feeCollector = _feeCollector;
+        creatorAddress = _creatorAddress;
 
-        // Initial mint: 100 million tokens
-        uint256 initialSupply = 100000000 * (10 ** 18); 
-        _mint(msg.sender, initialSupply); // Mint tokens to the owner's address
+        // Mint 5% for initial click distribution
+        _mint(address(this), INITIAL_DISTRIBUTION); // Mint to contract itself for distribution
+        
+        // Mint 5% for future clicks distribution
+        _mint(address(this), NEXT_PHASE_DISTRIBUTION);
+        
+        // Mint 40% for partners distribution
+        _mint(address(this), MAX_SUPPLY * 40 / 100);
 
-        // Distribute 5% of the initial supply
-        uint256 distributionAmount = (initialSupply * distributionRate) / 100;
-        _mint(address(this), distributionAmount); // Mint 5% to the contract for distribution
-        totalDistributed += distributionAmount;
+        // Mint 30% for system development (recycling plants)
+        _mint(address(this), MAX_SUPPLY * 30 / 100);
+
+        // Mint 20% for creator and further development
+        _mint(creatorAddress, MAX_SUPPLY * 20 / 100);
     }
 
-    // Function to change the fee collector address
+    // Set the address for fee collection
     function setFeeCollector(address _feeCollector) external onlyOwner {
         require(_feeCollector != address(0), "Fee collector address cannot be zero");
         feeCollector = _feeCollector;
     }
 
-    // Function to change the burn rate
+    // Set the creator address for future distributions
+    function setCreatorAddress(address _creatorAddress) external onlyOwner {
+        require(_creatorAddress != address(0), "Creator address cannot be zero");
+        creatorAddress = _creatorAddress;
+    }
+
+    // Set the burn rate percentage
     function setBurnRate(uint256 _burnRate) external onlyOwner {
         require(_burnRate <= 10, "Burn rate cannot exceed 10%");
         burnRate = _burnRate;
     }
 
-    // Overriding the transfer function to include burn and fee collection logic
+    // Function for distributing tokens for clicks (limited to 1000 users at once)
+    function distributeTokens(address[] memory recipients, uint256 amount) external onlyOwner {
+        require(recipients.length <= MAX_CONCURRENT_USERS, "Cannot distribute to more than 1000 users at once");
+
+        uint256 totalAmount = recipients.length * amount;
+        require(totalDistributed + totalAmount <= INITIAL_DISTRIBUTION + NEXT_PHASE_DISTRIBUTION, "Total distribution limit exceeded");
+
+        for (uint i = 0; i < recipients.length; i++) {
+            require(recipients[i] != address(0), "Recipient address cannot be zero");
+
+            // Ensure that 3 hours have passed since the last click
+            require(block.timestamp >= lastClickTime[recipients[i]] + CLICK_LIMIT_TIME, "You can click only once every 3 hours");
+
+            // Update the last click time
+            lastClickTime[recipients[i]] = block.timestamp;
+
+            // Distribute the token to the user
+            _transfer(address(this), recipients[i], amount);
+        }
+
+        totalDistributed += totalAmount;
+    }
+
+    // Overriding the transfer function with added burn and fee logic
     function _transfer(address sender, address recipient, uint256 amount) internal override {
-        uint256 burnAmount = (amount * burnRate) / 100; // Calculate the burn amount
+        uint256 burnAmount = (amount * burnRate) / 100; // Calculate how many tokens to burn
         uint256 feeAmount = (amount * burnRate) / 100;  // Calculate the fee amount
 
         uint256 sendAmount = amount - burnAmount - feeAmount; // Remaining amount to send
@@ -56,25 +100,13 @@ contract RECYC is ERC20, Ownable {
         super._transfer(sender, recipient, sendAmount);
     }
 
-    // Function to distribute tokens to multiple recipients
-    function distributeTokens(address[] calldata recipients, uint256 amountPerRecipient) external onlyOwner {
-        uint256 totalAmount = recipients.length * amountPerRecipient;
-        require(totalDistributed + totalAmount <= (MAX_SUPPLY * 30) / 100, "Exceeds total distribution limit");
-
-        // Distribute tokens to recipients
-        for (uint256 i = 0; i < recipients.length; i++) {
-            _transfer(address(this), recipients[i], amountPerRecipient);
-        }
-        totalDistributed += totalAmount; // Update the total distributed amount
-    }
-
-    // Function to mint new tokens (up to the max supply)
+    // Mint new tokens (up to the max supply limit)
     function mint(address to, uint256 amount) external onlyOwner {
         require(totalSupply() + amount <= MAX_SUPPLY, "Max supply exceeded");
         _mint(to, amount);
     }
 
-    // Function to burn tokens (for deflationary purpose)
+    // Burn tokens (for deflationary purpose)
     function burn(uint256 amount) external {
         _burn(msg.sender, amount);
     }
