@@ -1,31 +1,58 @@
 # RECYC Coin
 
-RECYC Coin is a deflationary ERC20 token built on Ethereum and Binance Smart Chain (BSC). The token has a burning mechanism that reduces supply with every transaction, a fee collection mechanism to fund ecosystem development, and other features aimed at creating a sustainable digital economy.
+RECYC Coin is a deflationary BEP20 token built on Binance Smart Chain (BSC). The token is designed to support eco-friendly initiatives by promoting sustainability through tokenomics.
 
 ## Features
-- **Deflationary Mechanism**: 2% of each transaction is burned, reducing the total supply over time.
-- **Fee Collection**: 2% of each transaction is sent to a fee collector address, which can be used for ecosystem development.
-- **ERC20 & BEP20 Compatibility**: Fully compatible with Ethereum and Binance Smart Chain.
-- **Minting**: The contract owner can mint new tokens up to a total supply of 1 trillion.
-  
+- **Deflationary Mechanism**: A transaction fee ranging from 0.5% to 5% is applied, with a portion burned to reduce total supply over time.
+- **Fee Collection**: A percentage of the transaction fee is directed to a designated wallet to fund ecosystem and environmental projects.
+- **Total Supply**: 1 billion RECYC tokens.
+- **Blockchain Compatibility**: Built on Binance Smart Chain (BSC) for fast and low-cost transactions.
+
 ## Installation
 
-To deploy the contract, you need to:
+To deploy or interact with the contract, follow these steps:
 
-1. Install Truffle or Hardhat for Ethereum development.
-2. Set up your environment with a wallet (e.g., MetaMask) and a test network (e.g., Rinkeby, BSC Testnet).
-3. Deploy the contract to the desired blockchain (Ethereum or BSC).
+1. Clone the repository:
+   ```bash
+   git clone <repository-link>
+   cd <repository-folder>
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Set up your environment:
+   - Create a `.env` file in the root directory.
+   - Add the following variables:
+     ```env
+     PRIVATE_KEY=<your_private_key>
+     BSC_RPC_URL=<your_bsc_rpc_url>
+     ```
+4. Compile the smart contracts:
+   ```bash
+   npx hardhat compile
+   ```
+5. Deploy the contract to Binance Smart Chain:
+   ```bash
+   npx hardhat run scripts/deploy.js --network bsc
+   ```
 
 ## Contract Address
 
-Once deployed, you will have the contract address for your token. Ensure you keep this address safe.
+- **RECYC Token Address**: `0x5462f09252a86ECEcefd35Ab974E61943530593D`
 
 ## How to use the contract
-- **Burn tokens**: You can burn tokens by calling the `burn(uint256 amount)` function.
-- **Mint new tokens**: The contract owner can mint new tokens with `mint(address to, uint256 amount)` function.
-- **Set fee collector address**: The contract owner can change the fee collector using `setFeeCollector(address newCollector)` function.
 
-For more details, check the contract code.
+- **Transfer Tokens**: Use the `transfer(address recipient, uint256 amount)` function.
+- **Burn Tokens**: Call the `burn(uint256 amount)` function to reduce the supply.
+- **Fee Adjustments**: Transaction fees are dynamically set within the 0.5% to 5% range.
+
+## Contacts
+
+For inquiries and support, please reach out via email:
+- **Email**: [aigolds@proton.me](mailto:aigolds@proton.me)
 
 ## License
+
 This project is licensed under the MIT License.
+
