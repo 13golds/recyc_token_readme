@@ -3,20 +3,21 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract RecycToken is ERC20, Ownable {
+contract RecycToken is ERC20, Ownable, ReentrancyGuard {
 
-    uint256 public maxSupply = 1000000000000 * (10 ** uint256(decimals())); // Maximum token supply
-    uint256 public reserveSupply = 50000000000 * (10 ** uint256(decimals())); // Reserved supply (for liquidity, staking, etc.)
-    uint256 public transactionFeePercentage = 0; // Initial transaction fee is set to 0%
+    uint256 public constant MAX_SUPPLY = 1000000000000 * 10**18; // Maximum token supply
+    uint256 public constant RESERVED_SUPPLY = 50000000000 * 10**18; // Reserved supply
+    uint256 public transactionFeePercentage = 5; // Transaction fee (in basis points, 5 = 0.5%)
 
     address public liquidityPool; // Liquidity pool address
 
     mapping(address => bool) public distributors; // A list of approved distributors
 
     constructor() ERC20("Recyc", "RECYC") {
-        _mint(msg.sender, maxSupply - reserveSupply); // Mint the initial supply, excluding the reserved tokens
-        liquidityPool = msg.sender; // Set the contract owner as the liquidity pool owner
+        _mint(msg.sender, MAX_SUPPLY - RESERVED_SUPPLY); // Mint the initial supply
+        liquidityPool = msg.sender; // Set owner as the initial liquidity pool
     }
 
     // Modifier to allow only distributors to call certain functions
@@ -25,36 +26,46 @@ contract RecycToken is ERC20, Ownable {
         _;
     }
 
-    // Function to set the transaction fee percentage (0.5% to 5%)
+    // Function to set the transaction fee (0.5% to 5%)
     function setTransactionFee(uint256 _feePercentage) external onlyOwner {
-        require(_feePercentage >= 0.5 && _feePercentage <= 5, "Fee must be between 0.5% and 5%");
+        require(_feePercentage >= 5 && _feePercentage <= 500, "Fee must be between 0.5% and 5%");
         transactionFeePercentage = _feePercentage; // Set the transaction fee
+        emit TransactionFeeUpdated(_feePercentage);
     }
 
-    // Allow adding a distributor (address allowed to distribute tokens)
+    // Add a distributor
     function addDistributor(address distributor) external onlyOwner {
         distributors[distributor] = true;
+        emit DistributorAdded(distributor);
     }
 
-    // Allow removing a distributor
+    // Remove a distributor
     function removeDistributor(address distributor) external onlyOwner {
         distributors[distributor] = false;
+        emit DistributorRemoved(distributor);
     }
 
-    // Function to distribute tokens with the transaction fee
-    function distribute(address to, uint256 amount) external onlyDistributor {
-        uint256 fee = (amount * transactionFeePercentage) / 100; // Calculate the fee
-        uint256 amountAfterFee = amount - fee; // Calculate the amount after fee deduction
+    // Distribute tokens with fee deduction
+    function distribute(address to, uint256 amount) external onlyDistributor nonReentrant {
+        uint256 fee = (amount * transactionFeePercentage) / 1000; // Calculate fee
+        uint256 amountAfterFee = amount - fee; // Amount after fee
 
-        // Transfer tokens to the recipient, excluding the fee
-        _transfer(owner(), to, amountAfterFee);
-        // Transfer the fee to the liquidity pool
-        _transfer(owner(), liquidityPool, fee);
+        _transfer(owner(), to, amountAfterFee); // Transfer to recipient
+        _transfer(owner(), liquidityPool, fee); // Transfer fee to liquidity pool
+
+        emit TokensDistributed(to, amountAfterFee, fee);
     }
 
-    // Check total supply before transferring tokens (to respect the max supply limit)
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
-        super._beforeTokenTransfer(from, to, amount);
-        require(totalSupply() + amount <= maxSupply, "Max supply exceeded"); // Ensure max supply limit is not exceeded
+    // Burn tokens
+    function burn(uint256 amount) external {
+        _burn(msg.sender, amount);
+        emit TokensBurned(msg.sender, amount);
     }
+
+    // Events
+    event TransactionFeeUpdated(uint256 newFee);
+    event DistributorAdded(address indexed distributor);
+    event DistributorRemoved(address indexed distributor);
+    event TokensDistributed(address indexed to, uint256 amountAfterFee, uint256 fee);
+    event TokensBurned(address indexed burner, uint256 amount);
 }
