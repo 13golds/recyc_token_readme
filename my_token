@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract RecycToken is ERC20, Ownable {
+
+    uint256 public maxSupply = 1000000000000 * (10 ** uint256(decimals())); // Maximum token supply
+    uint256 public reserveSupply = 50000000000 * (10 ** uint256(decimals())); // Reserved supply
+
+    uint256 public transactionFeePercentage = 0; // Transaction fee in percentage
+    address public liquidityPool; // Liquidity pool address
+
+    // Addresses for percentage allocation
+    address public partnershipResource;
+    address public factoryReserve;
+    address public generalReserve;
+
+    // Percentages for allocation
+    uint256 public constant PARTNERSHIP_PERCENTAGE = 40; // 40% to partnership
+    uint256 public constant FACTORY_PERCENTAGE = 30;     // 30% to factories
+    uint256 public constant GENERAL_PERCENTAGE = 20;     // 20% to general reserve
+    uint256 public constant POOL_PERCENTAGE = 5;         // 5% to liquidity pool
+
+    constructor(
+        address _partnershipResource,
+        address _factoryReserve,
+        address _generalReserve
+    ) ERC20("Recyc", "RECYC") {
+        require(
+            _partnershipResource != address(0) &&
+            _factoryReserve != address(0) &&
+            _generalReserve != address(0),
+            "Addresses cannot be zero"
+        );
+
+        partnershipResource = _partnershipResource;
+        factoryReserve = _factoryReserve;
+        generalReserve = _generalReserve;
+
+        _mint(msg.sender, maxSupply - reserveSupply);
+        liquidityPool = msg.sender;
+    
+    }
+
+    function _transfer(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) internal override {
+        if (transactionFeePercentage > 0) {
+            uint256 fee = (amount * transactionFeePercentage) / 100; // Calculate fee
+            uint256 amountAfterFee = amount - fee;
+
+            // Split the fee
+            uint256 partnershipAmount = (fee * PARTNERSHIP_PERCENTAGE) / 100;
+            uint256 factoryAmount = (fee * FACTORY_PERCENTAGE) / 100;
+            uint256 generalAmount = (fee * GENERAL_PERCENTAGE) / 100;
+            uint256 poolAmount = (fee * POOL_PERCENTAGE) / 100;
+
+            // Transfer fee to respective wallets
+            super._transfer(sender, partnershipResource, partnershipAmount);
+            super._transfer(sender, factoryReserve, factoryAmount);
+            super._transfer(sender, generalReserve, generalAmount);
+            super._transfer(sender, liquidityPool, poolAmount);
+
+            // Transfer the remaining tokens to the recipient
+            super._transfer(sender, recipient, amountAfterFee);
+        } else {
+            super._transfer(sender, recipient, amount);
+        }
+    }
+}
